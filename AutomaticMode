@@ -1,0 +1,137 @@
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <SPI.h>
+#include <Wire.h>
+
+// Dimensiones de la OLED
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+// Parámetros de la OLED
+#define OLED_RESET -1
+#define SCREEN_ADDRESS 0x3C
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// Pines de los botones
+#define BUTTON1 5  // Función manual
+#define BUTTON2 4  // Reinicio por interrupción
+#define BUTTON3 3  // Trigger/Set frequency
+#define BUTTON4 2  // Función automática
+
+// Señal de reloj
+#define ClockSignal 9
+#define OUTPUT_PIN 10
+
+// Frecuencias disponibles
+const int frequencies[] = {1, 10, 100, 1000, 10000, 100000};  // Hz
+int currentFrequencyIndex = 0;  // Índice de la frecuencia actual
+
+// Variables de estado
+bool ManualMode = HIGH;
+bool AutomaticMode = HIGH;
+bool Trigger = HIGH;
+
+void setup() {
+  // Comunicación serial
+  Serial.begin(9600);
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println("Wrong SSD1306 Display initialization.");
+  }
+
+  // Inicialización de botones
+  pinMode(BUTTON1, INPUT);
+  pinMode(BUTTON2, INPUT_PULLUP);  // Activado con nivel bajo (LOW)
+  pinMode(BUTTON3, INPUT);
+  pinMode(BUTTON4, INPUT_PULLUP);  // Activado con nivel bajo (LOW)
+
+  // Inicializar el display
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 0);
+  display.println("Clock Module");
+  display.drawLine(0, 10, 128, 10, WHITE);
+  display.display();
+}
+
+void loop() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 10);
+  display.print("CLOCK MODULE");
+  display.println("\n\nSelecciona un Modo:");
+  display.println("a) Manual");
+  display.println("b) Automatico");
+  display.display();
+
+  // Lectura del estado de los botones de modo
+  ManualMode = digitalRead(BUTTON1);
+  AutomaticMode = digitalRead(BUTTON4);
+
+  // Ejecutar funciones de acuerdo al estado de los botones
+  if (ManualMode == LOW) {
+    manual();
+  } else if (AutomaticMode == LOW) {
+    automatic();
+  }
+}
+
+void manual() {
+  // ... (Implementación del modo manual)
+
+  while (1) {
+    Trigger = digitalRead(BUTTON3);
+
+    if (Trigger == LOW) {
+      digitalWrite(ClockSignal, HIGH);
+    } else {
+      digitalWrite(ClockSignal, LOW);
+    }
+  }
+}
+
+void automatic()
+{
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 10);
+  display.print("Modo automatico:\n\nPresiona el boton \nSELECT para elegir \nuna frecuencia");
+  display.display();
+
+  // Arreglo de frecuencias disponibles
+  int frequencies[] = {1, 10, 100, 1000, 10000, 100000};
+  int numFrequencies = sizeof(frequencies) / sizeof(frequencies[0]);
+  int currentFrequencyIndex = -1;
+
+  while (1)
+  {
+    if (digitalRead(BUTTON4) == LOW)
+    {
+      // Incrementa el índice de la frecuencia
+      currentFrequencyIndex = (currentFrequencyIndex + 1) % numFrequencies;
+
+      // Muestra la frecuencia seleccionada en el display
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setCursor(0, 10);
+      display.print("Modo automatico:\n\nFrecuencia seleccionada: ");
+      display.print(frequencies[currentFrequencyIndex]);
+      display.print(" Hz");
+      display.display();
+
+      // Calcula el período de la frecuencia en microsegundos
+      long period = 1000000 / frequencies[currentFrequencyIndex];
+
+      // Frecuencia de salida
+      tone(OUTPUT_PIN, frequencies[currentFrequencyIndex], period);
+
+      // Delay entre pulsaciones
+      delay(200);
+    }
+  }
+}
+
+
+
